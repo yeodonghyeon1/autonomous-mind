@@ -22,6 +22,12 @@ def _call(system: str, user_message: str, model: str, max_tokens: int) -> str:
 
 
 def brain_generate(domain_context: str, state: dict, model: str, max_tokens: int) -> str:
+    corrections = state.get("last_critique_corrections")
+    critique_block = (
+        f"\n## Critic's Mandatory Corrections (from last cycle)\n{corrections}"
+        if corrections
+        else ""
+    )
     user_msg = f"""## Domain Context
 {domain_context}
 
@@ -29,7 +35,7 @@ def brain_generate(domain_context: str, state: dict, model: str, max_tokens: int
 - Cycle: {state['cycle']}
 - Previous Hypothesis: {state.get('last_hypothesis') or 'None (first cycle)'}
 - Next Hypothesis Seed: {state.get('next_hypothesis_seed') or 'Start from scratch'}
-- Accumulated Insights: {chr(10).join(f"- {i}" for i in state.get('key_insights', [])) or 'None yet'}
+- Accumulated Insights: {chr(10).join(f"- {i}" for i in state.get('key_insights', [])) or 'None yet'}{critique_block}
 
 You are in **Mode A — Hypothesis Generation**. Generate the hypothesis for cycle {state['cycle']}."""
     return _call(_load_prompt("brain"), user_msg, model, max_tokens)
@@ -55,6 +61,41 @@ def compulsion_verify(domain_context: str, hypothesis: str, model: str, max_toke
 
 Verify this hypothesis. Seek convergent evidence. Confirm the prediction."""
     return _call(_load_prompt("compulsion"), user_msg, model, max_tokens)
+
+
+def critic_review(
+    hypothesis: str,
+    curiosity_result: str,
+    compulsion_result: str,
+    synthesis: str,
+    accumulated_insights: list[str],
+    model: str,
+    max_tokens: int,
+) -> str:
+    prior = "\n".join(f"- {i}" for i in accumulated_insights) or "None yet"
+    user_msg = f"""## Accumulated Insights from Prior Cycles
+{prior}
+
+---
+
+## This Cycle — Full Output
+
+### Hypothesis
+{hypothesis}
+
+### Curiosity Agent
+{curiosity_result}
+
+### Compulsion Agent
+{compulsion_result}
+
+### Brain Synthesis
+{synthesis}
+
+---
+
+Review the above cycle output. Flag logical errors, duplications, unsupported claims, and internal consistency issues."""
+    return _call(_load_prompt("critic"), user_msg, model, max_tokens)
 
 
 def brain_synthesize(

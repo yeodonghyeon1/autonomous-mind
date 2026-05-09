@@ -9,8 +9,8 @@ load_dotenv(Path(__file__).parent.parent / ".env")
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from agents import brain_generate, brain_synthesize, compulsion_verify, curiosity_explore
-from obsidian import update_moc, write_session
+from agents import brain_generate, brain_synthesize, compulsion_verify, critic_review, curiosity_explore
+from obsidian import append_critique, update_moc, write_session
 from state import extract_section, load_state, save_state
 
 _CONFIG_PATH = Path(__file__).parent.parent / "config" / "system.yaml"
@@ -55,7 +55,6 @@ def run_cycle() -> None:
     print(synthesis)
 
     session_path = write_session(cycle, hypothesis, curiosity_result, compulsion_result, synthesis)
-    update_moc(cycle, session_path, synthesis)
 
     state["last_hypothesis"] = extract_section(hypothesis, "## Hypothesis")
     state["next_hypothesis_seed"] = extract_section(synthesis, "## Next Hypothesis Seed")
@@ -66,8 +65,21 @@ def run_cycle() -> None:
         if line.strip().startswith("-")
     ]
     existing = state.get("key_insights", [])
-    state["key_insights"] = (existing + new_insights)[-30:]  # keep last 30 insights
+    state["key_insights"] = (existing + new_insights)[-30:]
 
+    print("\n[Critic] Reviewing session...")
+    critique = critic_review(
+        hypothesis, curiosity_result, compulsion_result, synthesis,
+        state["key_insights"], model, max_tokens,
+    )
+    print(critique)
+
+    append_critique(session_path, critique)
+
+    corrections = extract_section(critique, "## Mandatory Corrections for Next Cycle")
+    state["last_critique_corrections"] = corrections if corrections != "None." else None
+
+    update_moc(cycle, session_path, synthesis)
     save_state(state)
     print(f"\n✓ Cycle {cycle} saved → {session_path.name}")
 

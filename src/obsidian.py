@@ -49,6 +49,11 @@ tags: [cycle-{cycle}, session]
     return path
 
 
+def append_critique(session_path: Path, critique: str) -> None:
+    existing = session_path.read_text(encoding="utf-8")
+    session_path.write_text(existing + f"\n---\n\n## Critic Review\n{critique}\n", encoding="utf-8")
+
+
 def update_moc(cycle: int, session_path: Path, synthesis_snippet: str) -> None:
     moc_path = _VAULT / "MOC.md"
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
