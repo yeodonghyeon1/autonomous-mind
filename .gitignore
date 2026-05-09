@@ -2,3 +2,10 @@
 __pycache__/
 *.py[cod]
 .pytest_cache/
+
+# Local-only environment / hardware / private notes. Do not push IPs, hostnames,
+# exact GPU snapshots, tokens, or machine-specific paths.
+config/local_environment.md
+config/*.local.md
+local/
+*.private.md
