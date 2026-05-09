@@ -95,14 +95,7 @@ autonomous-mind/
 pip install -r requirements.txt
 ```
 
-### 2. 환경 변수
-
-```bash
-cp .env.example .env
-# .env 파일에 ANTHROPIC_API_KEY 입력
-```
-
-### 3. 도메인 설정
+### 2. 도메인 설정
 
 `config/domain.md` 를 열어 전문 분야 목표를 작성한다.
 
@@ -116,6 +109,14 @@ PID 제어기의 파라미터 자동 튜닝 방법론
 ## Open Questions
 - Ziegler-Nichols 방법이 비선형 시스템에서 왜 실패하는가?
 ```
+
+### 3. Claude Code CLI 로그인 확인
+
+```bash
+claude --version
+```
+
+Claude Code CLI가 로그인된 상태면 별도 API 키 설정 없이 동작한다.
 
 ### 4. 루프 시작
 

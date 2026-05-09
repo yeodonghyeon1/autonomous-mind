@@ -3,9 +3,6 @@ import sys
 from pathlib import Path
 
 import yaml
-from dotenv import load_dotenv
-
-load_dotenv(Path(__file__).parent.parent / ".env")
 
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -30,27 +27,26 @@ def run_cycle() -> None:
     config = _load_config()
     domain_context = _load_domain()
     model: str = config["model"]
-    max_tokens: int = config.get("max_tokens", 3000)
 
     state = load_state()
     state["cycle"] += 1
     cycle = state["cycle"]
 
     print(f"\n[Brain] Cycle {cycle} — generating hypothesis...")
-    hypothesis = brain_generate(domain_context, state, model, max_tokens)
+    hypothesis = brain_generate(domain_context, state, model)
     print(hypothesis)
 
     print("\n[Curiosity] Exploring...")
-    curiosity_result = curiosity_explore(domain_context, hypothesis, model, max_tokens)
+    curiosity_result = curiosity_explore(domain_context, hypothesis, model)
     print(curiosity_result)
 
     print("\n[Compulsion] Verifying...")
-    compulsion_result = compulsion_verify(domain_context, hypothesis, model, max_tokens)
+    compulsion_result = compulsion_verify(domain_context, hypothesis, model)
     print(compulsion_result)
 
     print("\n[Brain] Synthesizing...")
     synthesis = brain_synthesize(
-        domain_context, hypothesis, curiosity_result, compulsion_result, state, model, max_tokens
+        domain_context, hypothesis, curiosity_result, compulsion_result, state, model
     )
     print(synthesis)
 
@@ -70,7 +66,7 @@ def run_cycle() -> None:
     print("\n[Critic] Reviewing session...")
     critique = critic_review(
         hypothesis, curiosity_result, compulsion_result, synthesis,
-        state["key_insights"], model, max_tokens,
+        state["key_insights"], model,
     )
     print(critique)
 

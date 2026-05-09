@@ -1,7 +1,5 @@
-import os
+import subprocess
 from pathlib import Path
-
-import anthropic
 
 _PROMPTS_DIR = Path(__file__).parent.parent / "prompts"
 
@@ -10,18 +8,20 @@ def _load_prompt(name: str) -> str:
     return (_PROMPTS_DIR / f"{name}.md").read_text(encoding="utf-8")
 
 
-def _call(system: str, user_message: str, model: str, max_tokens: int) -> str:
-    client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
-    response = client.messages.create(
-        model=model,
-        max_tokens=max_tokens,
-        system=system,
-        messages=[{"role": "user", "content": user_message}],
+def _call(system: str, user_message: str, model: str) -> str:
+    result = subprocess.run(
+        ["claude", "-p", "--system", system, "--model", model],
+        input=user_message,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
     )
-    return response.content[0].text
+    if result.returncode != 0:
+        raise RuntimeError(f"Claude CLI error:\n{result.stderr}")
+    return result.stdout.strip()
 
 
-def brain_generate(domain_context: str, state: dict, model: str, max_tokens: int) -> str:
+def brain_generate(domain_context: str, state: dict, model: str) -> str:
     corrections = state.get("last_critique_corrections")
     critique_block = (
         f"\n## Critic's Mandatory Corrections (from last cycle)\n{corrections}"
@@ -38,10 +38,10 @@ def brain_generate(domain_context: str, state: dict, model: str, max_tokens: int
 - Accumulated Insights: {chr(10).join(f"- {i}" for i in state.get('key_insights', [])) or 'None yet'}{critique_block}
 
 You are in **Mode A — Hypothesis Generation**. Generate the hypothesis for cycle {state['cycle']}."""
-    return _call(_load_prompt("brain"), user_msg, model, max_tokens)
+    return _call(_load_prompt("brain"), user_msg, model)
 
 
-def curiosity_explore(domain_context: str, hypothesis: str, model: str, max_tokens: int) -> str:
+def curiosity_explore(domain_context: str, hypothesis: str, model: str) -> str:
     user_msg = f"""## Domain Context
 {domain_context}
 
@@ -49,10 +49,10 @@ def curiosity_explore(domain_context: str, hypothesis: str, model: str, max_toke
 {hypothesis}
 
 Explore this hypothesis. Seek prediction error. Find what surprises you."""
-    return _call(_load_prompt("curiosity"), user_msg, model, max_tokens)
+    return _call(_load_prompt("curiosity"), user_msg, model)
 
 
-def compulsion_verify(domain_context: str, hypothesis: str, model: str, max_tokens: int) -> str:
+def compulsion_verify(domain_context: str, hypothesis: str, model: str) -> str:
     user_msg = f"""## Domain Context
 {domain_context}
 
@@ -60,7 +60,34 @@ def compulsion_verify(domain_context: str, hypothesis: str, model: str, max_toke
 {hypothesis}
 
 Verify this hypothesis. Seek convergent evidence. Confirm the prediction."""
-    return _call(_load_prompt("compulsion"), user_msg, model, max_tokens)
+    return _call(_load_prompt("compulsion"), user_msg, model)
+
+
+def brain_synthesize(
+    domain_context: str,
+    hypothesis: str,
+    curiosity_result: str,
+    compulsion_result: str,
+    state: dict,
+    model: str,
+) -> str:
+    user_msg = f"""## Domain Context
+{domain_context}
+
+## This Cycle's Hypothesis
+{hypothesis}
+
+## Curiosity Agent Results
+{curiosity_result}
+
+## Compulsion Agent Results
+{compulsion_result}
+
+## Accumulated Insights So Far
+{chr(10).join(f"- {i}" for i in state.get('key_insights', [])) or 'None yet'}
+
+You are in **Mode B — Synthesis**. Synthesize cycle {state['cycle']} and generate the next hypothesis seed."""
+    return _call(_load_prompt("brain"), user_msg, model)
 
 
 def critic_review(
@@ -70,7 +97,6 @@ def critic_review(
     synthesis: str,
     accumulated_insights: list[str],
     model: str,
-    max_tokens: int,
 ) -> str:
     prior = "\n".join(f"- {i}" for i in accumulated_insights) or "None yet"
     user_msg = f"""## Accumulated Insights from Prior Cycles
@@ -95,32 +121,4 @@ def critic_review(
 ---
 
 Review the above cycle output. Flag logical errors, duplications, unsupported claims, and internal consistency issues."""
-    return _call(_load_prompt("critic"), user_msg, model, max_tokens)
-
-
-def brain_synthesize(
-    domain_context: str,
-    hypothesis: str,
-    curiosity_result: str,
-    compulsion_result: str,
-    state: dict,
-    model: str,
-    max_tokens: int,
-) -> str:
-    user_msg = f"""## Domain Context
-{domain_context}
-
-## This Cycle's Hypothesis
-{hypothesis}
-
-## Curiosity Agent Results
-{curiosity_result}
-
-## Compulsion Agent Results
-{compulsion_result}
-
-## Accumulated Insights So Far
-{chr(10).join(f"- {i}" for i in state.get('key_insights', [])) or 'None yet'}
-
-You are in **Mode B — Synthesis**. Synthesize cycle {state['cycle']} and generate the next hypothesis seed."""
-    return _call(_load_prompt("brain"), user_msg, model, max_tokens)
+    return _call(_load_prompt("critic"), user_msg, model)
