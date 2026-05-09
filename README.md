@@ -57,7 +57,7 @@ autonomous-mind/
 │   └── critic.md
 ├── src/
 │   ├── orchestrator.py    # 사이클 진입점
-│   ├── agents.py          # Anthropic API 호출
+│   ├── agents.py          # Hermes CLI subprocess 호출
 │   ├── obsidian.py        # vault/ MD 파일 쓰기
 │   └── state.py           # 상태 관리 (.state.json)
 ├── vault/
@@ -110,23 +110,32 @@ PID 제어기의 파라미터 자동 튜닝 방법론
 - Ziegler-Nichols 방법이 비선형 시스템에서 왜 실패하는가?
 ```
 
-### 3. Claude Code CLI 로그인 확인
+### 3. Hermes CLI 확인
 
 ```bash
-claude --version
+hermes --version
+hermes doctor
 ```
 
-Claude Code CLI가 로그인된 상태면 별도 API 키 설정 없이 동작한다.
+이 버전은 Claude CLI를 직접 호출하지 않는다. 각 Brain/Curiosity/Compulsion/Critic 턴은 `hermes chat -q ... -Q` subprocess로 실행된다. `config/system.yaml`의 `model: ""` 값은 현재 Hermes 기본 provider/model을 사용한다는 뜻이다.
 
 ### 4. 루프 시작
 
-`D:\autonomous-mind` 에서 Claude Code를 열고:
+한 사이클만 수동 실행:
 
-```
-/run-mind
+```bash
+cd /home/ubuntu/autonomous-mind
+source .venv/bin/activate
+python src/orchestrator.py
 ```
 
-CronCreate로 N시간마다 자동 실행되며, 첫 사이클이 즉시 시작된다.
+주기 실행은 Hermes cron으로 등록한다. 예:
+
+```bash
+hermes cron create 'every 6h'
+```
+
+Cron prompt에는 위 수동 실행 명령을 넣으면 된다.
 
 ---
 

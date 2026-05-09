@@ -9,15 +9,38 @@ def _load_prompt(name: str) -> str:
 
 
 def _call(system: str, user_message: str, model: str) -> str:
+    """Call a fresh Hermes subprocess for one autonomous-mind agent turn."""
+    prompt = f"""You are running as one agent inside autonomous-mind.
+
+## Agent System Prompt
+{system}
+
+## User Message
+{user_message}
+
+Return only this agent's markdown answer. Do not include process logs, tool transcripts, or surrounding commentary."""
+
+    command = [
+        "hermes",
+        "chat",
+        "-q",
+        prompt,
+        "-Q",
+        "--toolsets",
+        "terminal,file,web,session_search",
+    ]
+    if model:
+        command.extend(["--model", model])
+
     result = subprocess.run(
-        ["claude", "-p", "--system", system, "--model", model],
-        input=user_message,
+        command,
         capture_output=True,
         text=True,
         encoding="utf-8",
+        timeout=1800,
     )
     if result.returncode != 0:
-        raise RuntimeError(f"Claude CLI error:\n{result.stderr}")
+        raise RuntimeError(f"Hermes CLI error:\n{result.stderr}")
     return result.stdout.strip()
 
 

@@ -1,3 +1,6 @@
-model: claude-opus-4-7
+# Hermes Agent가 Claude CLI 대신 각 에이전트 턴을 subprocess로 실행한다.
+# 빈 model은 현재 Hermes 기본 provider/model 설정을 사용한다.
+model: ""
 loop_interval_hours: 6
 vault_path: vault
+hermes_toolsets: terminal,file,web,session_search

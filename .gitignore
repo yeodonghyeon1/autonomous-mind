@@ -1,4 +1,4 @@
-vault/.state.json
+.venv/
 __pycache__/
-*.pyc
-.DS_Store
+*.py[cod]
+.pytest_cache/
